@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>東京自由行 2026</title>
+<style>
+  :root {
+    --ink:#1E2A38; --paper:#EFF1E9; --surface:#FFFFFF;
+    --brick:#A6402F; --brass:#B08D3D; --moss:#6E7A63; --line:#DBDCCF;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    background:var(--paper); color:var(--ink);
+  }
+  #root { max-width:480px; margin:0 auto; min-height:100vh; position:relative; background:var(--paper); padding-bottom:76px; }
+  .disp { font-family: Georgia, "Noto Serif TC", serif; }
+  button, input, textarea { font-family:inherit; }
+  .station-tab {
+    flex:0 0 auto; cursor:pointer; border:2px solid var(--ink); background:var(--surface);
+    border-radius:6px; padding:8px 12px 7px; user-select:none;
+  }
+  .station-tab.active { background:var(--ink); color:#fff; box-shadow:0 3px 0 var(--brass); }
+  .station-tab .code {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:20px; height:20px; border-radius:50%; border:1.5px solid currentColor;
+    font-size:10px; font-weight:700; margin-right:6px;
+  }
+  .rail-wrap { position:relative; padding:6px 20px 30px; }
+  .rail-line { position:absolute; left:35px; top:0; bottom:0; width:2px;
+    background:repeating-linear-gradient(to bottom, var(--brass) 0 6px, transparent 6px 11px); }
+  .card { background:var(--surface); border-radius:12px; padding:10px 12px; border:1px solid var(--line); }
+  .dot { width:32px; height:32px; border-radius:50%; background:var(--surface); border:2px solid var(--brick);
+    flex:0 0 32px; display:flex; align-items:center; justify-content:center; margin-top:2px; }
+  .how-details { margin-top:8px; }
+  .how-details summary { cursor:pointer; font-size:12px; color:var(--brass); font-weight:700; list-style:none; display:flex; align-items:center; gap:5px; }
+  .how-details summary::-webkit-details-marker { display:none; }
+  .how-details summary:before { content:"🚃"; }
+  .how-details[open] summary:before { content:"🚃"; }
+  .how-text { margin-top:6px; font-size:12px; color:var(--moss); background:var(--paper); border-radius:8px; padding:8px 10px; line-height:1.6; white-space:pre-wrap; }
+  .pill-btn { border:1.5px solid var(--ink); border-radius:20px; padding:5px 12px; font-size:12px; cursor:pointer; background:transparent; color:var(--ink); }
+  .pill-btn.on { background:var(--ink); color:#fff; }
+  .icon-btn { background:none; border:none; cursor:pointer; color:var(--ink); display:inline-flex; align-items:center; }
+  input[type=text], textarea { width:100%; border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12px; }
+  textarea { resize:vertical; min-height:44px; }
+  .bottom-nav { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--line);
+    display:flex; padding:8px 20px calc(env(safe-area-inset-bottom, 8px) + 6px); gap:10px; max-width:480px; margin:0 auto; }
+  .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; cursor:pointer; color:var(--moss); font-size:11px; font-weight:700; }
+  .nav-btn.active { color:var(--brick); }
+  .map-btn, .nav-link-btn {
+    display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; text-decoration:none;
+    border-radius:14px; padding:4px 10px; border:1px solid var(--line);
+  }
+  .map-btn { color:var(--brick); background:#fdf3f0; border-color:#eccbc0; }
+  .nav-link-btn { color:var(--moss); background:#f1f3ec; border-color:var(--line); }
+  .item-row { position:relative; display:flex; gap:12px; margin-bottom:16px; }
+  .item-row.dragging { opacity:0.55; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+"use strict";
+
+/* ---------------- data ---------------- */
+const STORAGE_KEY = "jp-trip-2026-11-v2";
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+
+function defaultDays() {
+  return [
+    { id:"d1", date:"2026-11-14", dow:"六", theme:"哈利波特舞台劇", items:[
+      { t:"05:00", title:"機場集合", note:"備註｜長榮 BR184（TPE 2航廈）" },
+      { t:"07:55", title:"班機起飛", note:"備註｜TPE→NRT\n抵達｜12:00" },
+      { t:"13:32", title:"Access特急 前往三田站", note:"備註｜¥1,550・不需買指定席・三田站(A08)下車", how:"車程約75分鐘\n可查詢「駅別時刻表｜京成電鉄」" },
+      { t:"15:00", title:"相鐵フレッサイン東京田町 Check-in", note:"備註｜予約番号 TDF59B8E2AFF9・休息半小時", map:"https://maps.app.goo.gl/BbacBnmH3wmEuZja9" },
+      { t:"16:00", title:"休息完準備出門", note:"" },
+      { t:"16:30", title:"赤阪ACT劇場", note:"", how:"都營三田線(往西高島平)｜三田→日比谷(6分/4站)\n步行3分轉地鐵\n千代田線(往代代木上原)｜日比谷→赤阪(5分/3站)\n3B出口步行3分", map:"https://maps.app.goo.gl/CXAnvA3QDM8xXEMNA" },
+      { t:"17:00", title:"抵達赤阪．先過安檢", note:"備註｜中文導覽，押金現金 ¥10,000" },
+      { t:"18:15-21:55", title:"舞台劇開演", note:"備註｜約3小時40分鐘" },
+      { t:"22:00", title:"回飯店", note:"" },
+    ]},
+    { id:"d2", date:"2026-11-15", dow:"日", theme:"御朱印＆池袋", items:[
+      { t:"09:30-10:45", title:"法輪寺", note:"早餐｜09:00\n抵達｜10:00\n行程｜刺繡御朱印", how:"都營淺草線(往青砥)｜三田→日本橋(10分/5站)\n轉地鐵東西線(往三鷹)｜日本橋→早稻田(12分/6站)\n3B出口步行3分", map:"https://maps.app.goo.gl/UXLznhmETQ2CNJxF7" },
+      { t:"11:15-12:00", title:"妙義神社", note:"行程｜紙雕御朱印＆貓貓御守", how:"地鐵東西線(往東葉勝田台)｜早稻田→飯田橋(4分/2站)\n轉地鐵南北線(往浦和美園)｜飯田橋→駒込(9分/4站)", map:"https://maps.app.goo.gl/C7XXaV2tgMZYhBsn7" },
+      { t:"12:30-13:30", title:"焼肉あぶる。駒込店", note:"備註｜已訂位", how:"在駒込站旁", map:"https://maps.app.goo.gl/98KmsAGpsHx5LEy26" },
+      { t:"14:00-15:30", title:"池袋 東武百貨", note:"行程｜UNIQLO 9F-10F", how:"JR山手線(內環．往澀谷)｜駒込→池袋(7分/3站)", map:"https://maps.app.goo.gl/MZBgydR7VUMwgvQL7" },
+      { t:"15:30-16:30", title:"Afternoon Tea TEAROOM", note:"備註｜同棟3F 8番地" },
+      { t:"16:45-17:45", title:"西武百貨", note:"行程｜LOFT 9F-12F", map:"https://maps.app.goo.gl/SYyS3uvzheT3TZXj7" },
+      { t:"18:00", title:"吃晚餐", note:"1. 東京油組総本店 池袋東組\n2. 池袋大人のハンバーグ\n3. 回田町吃", how:"JR山手線(內環．往澀谷) ｜池袋→田町(36分/14站)", map:"https://maps.app.goo.gl/ZsJUHjp5S7MVzGEN7" },
+    ]},
+    { id:"d3", date:"2026-11-16", dow:"一", theme:"鎌倉與長谷寺夜楓", items:[
+      { t:"08:00-09:15", title:"飯店吃早餐", note:"" },
+      { t:"10:30-11:30", title:"北鎌倉圓覺寺", note:"抵達｜10:30\n行程｜賞楓🍁", how:"搭JR山手線或京濱東北線→品川\n轉JR橫須賀線直達北鎌倉站（約1小時）", map:"https://maps.app.goo.gl/94UbYw2xQwvp34kn6" },
+      { t:"11:30-12:30", title:"往：鎌倉車站 吃午餐", note:"備註｜\n御成町食堂／鎌倉茶々冰淇淋(靜岡抹茶)\n小町通：Miyoshi手打釜揚うどん、甘味処鎌倉蕨餅、寿清庵抹茶可麗餅、夢見屋四色糰子、Giraffa Curry Pan咖喱麵包", map:"https://maps.app.goo.gl/qd2sBBUXrTxGwMLt8" },
+      { t:"13:00-13:30", title:"鎌倉高校前", note:"行程｜拍照逗留約30分鐘", map:"https://maps.app.goo.gl/3PjKNjdBwicN41xv6" },
+      { t:"14:00-14:40", title:"江之島", note:"", how:"方案一：\n江之電或步行到腰越站，轉巴士N3至江之島（約8分）\n方案二：\n江之電到江之島站(2站)，轉江之電巴士F3/F31至江之島", map:"https://maps.app.goo.gl/TdEXTP1chEQirAjN6" },
+      { t:"14:40-16:00", title:"江之島散策", note:"行程｜可上江島神社（付費手扶梯Escar）\n備註｜晚餐可選あさひ本店 / サンカフェ江の島" },
+      { t:"17:30-19:00", title:"往：長谷寺", note:"行程｜賞夜楓\n備註｜19:00關閉，需先確認官網夜間開放狀況", how:"走江之島大橋回江之島站（約20分）\n搭江之電至長谷站（19分）", map:"https://maps.app.goo.gl/cuhZWxHMXG3GscNB6" },
+      { t:"20:15", title:"返：飯店", note:"", how:"長谷站搭車回鎌倉，轉JR橫須賀線直達品川回田町（約1小時9分）" },
+    ]},
+    { id:"d4", date:"2026-11-17", dow:"二", theme:"新宿御苑＆購物", items:[
+      { t:"09:30-11:30", title:"新宿御苑", note:"備註｜可找星巴克休息", how:"東京都營 淺草線(往成田機場)｜三田→大門(3 分/1站)\n轉\n東京都營 大江戶線(往六本木)｜大門→國立競技場(12分/5站)\n步行五分鐘從千駄谷門進新宿御苑", map:"https://maps.app.goo.gl/EmHMkMZF1k7nABkJ7" },
+      { t:"11:45-13:00", title:"唐吉訶德 新宿東口本店", note:"", map:"https://maps.app.goo.gl/kNDv8idRMsGxwnTE8" },
+      { t:"13:30-14:30", title:"午餐 Masala Dining", note:"", map:"https://maps.app.goo.gl/BQMgwc43uz6U7jyy8" },
+      { t:"15:00-16:30", title:"日本橋(Pokemon Center DX／無印良品)", note:"行程A｜Pokemon Center DX（高島屋SC東館5F），\n行程B｜無印良品 COREDO室町3店（走路約5-10分鐘）\n備註｜逛完約16:30回高島屋門口集合", how:"地鐵丸之內線(往池袋) ｜新宿→赤阪見附(9分/5站)\n轉地鐵銀座線(往淺草)｜ 赤阪見附→日本橋(10分/6站)", map:"https://www.google.com/maps/search/?api=1&query=%E7%84%A1%E5%8D%B0%E8%89%AF%E5%93%81%20COREDO%E5%AE%A4%E7%94%BA3" },
+      { t:"17:00-18:00", title:"東京車站伴手禮店", note:"備註｜Brûlée Merize", how:"步行約10分鐘\nTokyo Gift Palette Store｜東京站1F八重洲北口", map:"https://maps.app.goo.gl/64f6FSMogXqAgX8Y8" },
+      { t:"18:00-", title:"東京車站地下街找晚餐", note:"行程｜買完東西就找晚餐" },
+      { t:"19:00", title:"回飯店", note:"備註｜早吃完就早回飯店\n車程｜約8分鐘", how:"1. JR山手線(往澀谷．外環)｜東京→田町(9站/4分)\n2. 京濱東北線(往蒲田)｜東京→田町(9站/4分)", map:"https://maps.app.goo.gl/yJZRjMdhr2u7wQYe9" },
+    ]},
+    { id:"d5", date:"2026-11-18", dow:"三", theme:"日光", items:[
+      { t:"06:30", title:"往：淺草站", note:"", how:"方案1: 東京都營(往京成高砂) 三田→藏前(19分/10站)\n方案2: 搭計程車", map:"https://maps.app.goo.gl/VjNfqosPAUZczXbX8" },
+      { t:"07:50-09:39", title:"搭車：往東武日光", note:"抵達｜09:39\n備註｜10月買票: Spacia X、Revaty" },
+      { t:"09:50", title:"往：車站對面租車店", note:"備註｜預計10:00-10:30開始租車" },
+      { t:"10:45", title:"往：日光東照宮", note:"", map:"https://www.google.com/maps/search/?api=1&query=%E6%97%A5%E5%85%89%E6%9D%B1%E7%85%A7%E5%AE%AE" },
+      { t:"12:00-13:00", title:"午餐", note:"備註｜さんない食堂・喫茶すいらん（東照宮附近）" },
+      { t:"13:00-14:30", title:"往：華嚴瀑布", note:"備註｜車程約35分鐘", map:"https://www.google.com/maps/search/?api=1&query=%E8%8F%AF%E5%9A%B4%E7%80%91%E5%B8%83" },
+      { t:"14:30-15:30", title:"往：日光山中禪寺", note:"備註｜車程約5分鐘・自由活動至16:20", map:"https://www.google.com/maps/search/?api=1&query=%E4%B8%AD%E7%A6%85%E5%AF%BA+%E6%97%A5%E5%85%89" },
+      { t:"17:00", title:"東武日光還車", note:"備註｜車程約40分鐘" },
+      { t:"18:00", title:"晚餐", note:"備註｜車站附近 Enya レストランえんや", map:"https://maps.app.goo.gl/xN9ttkfwU9Vmiazf8" },
+    ]},
+    { id:"d6", date:"2026-11-19", dow:"四", theme:"收心回家", items:[
+      { t:"08:30", title:"飯店退房", note:"" },
+      { t:"08:40", title:"車站附近吃早午餐&最後採買", note:"備註｜MSB大樓" },
+      { t:"10:30", title:"往：成田機場", note:"備註｜預計：90分鐘抵達\n長榮 BR197（NRT 1航廈）" },
+      { t:"12:00", title:"機場報到&託運", note:"" },
+      { t:"14:00", title:"返台", note:"備註｜預計17:05抵達" },
+    ]},
+  ];
+}
+
+/* Only show a map button when a real Google Maps link has been entered for
+   this item — no auto fallback search, so items without a link stay clean. */
+function mapUrlFor(item) {
+  if (item.map && item.map.trim()) return item.map.trim();
+  return null;
+}
+
+/* ---------------- persistence ---------------- */
+function loadTrip() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
+}
+function saveTrip(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+}
+
+function defaultChecklist() {
+  return [
+    { id: uid(), text: "護照", packed: false },
+    { id: uid(), text: "手機", packed: false },
+    { id: uid(), text: "錢包", packed: false },
+    { id: uid(), text: "旅平險保單", packed: false },
+    { id: uid(), text: "網路卡／WiFi分享器", packed: false },
+    { id: uid(), text: "行李箱", packed: false },
+    { id: uid(), text: "轉接頭／充電線", packed: false },
+    { id: uid(), text: "常備藥品", packed: false },
+  ];
+}
+function defaultPeople() {
+  return ["我", "MA", "控"];
+}
+function defaultExpenses() {
+  return [];
+}
+
+/* ---------------- state ---------------- */
+/* Prefer data already saved on this device (someone's own live edits);
+   otherwise fall back to a baked-in shared snapshot (from a shared file);
+   otherwise the built-in defaults further below. */
+const saved = loadTrip();
+const state = {
+  days: (saved && saved.days) || defaultDays(),
+  people: (saved && saved.people) || defaultPeople(),
+  expenses: (saved && saved.expenses) || defaultExpenses(),
+  checklist: (saved && saved.checklist) || defaultChecklist(),
+  vjw: (saved && saved.vjw) || { qrDataUrl: null },
+  tab: "itinerary",
+  activeDayId: null,
+  editingDay: false,
+  billForm: { title:"", amount:"", payer:"", split:[], mode:"equal", customShares:{}, dayId:null },
+  billDayFilter: "all",
+  showBillForm: false,
+  newPerson: "",
+  newChecklistItem: "",
+  showDataDump: false,
+};
+state.activeDayId = state.days[0] ? state.days[0].id : null;
+if (!state.billForm.payer && state.people[0]) state.billForm.payer = state.people[0];
+if (state.billForm.split.length === 0) state.billForm.split = state.people.slice();
+
+function persist() { saveTrip({ days: state.days, people: state.people, expenses: state.expenses, checklist: state.checklist, vjw: state.vjw }); }
+
+/* Get each participant's share amount for an expense (supports both the
+   older equal-split format and the newer custom per-person amounts). */
+function sharesFor(e) {
+  if (e.shares) return e.shares;
+  const share = e.amount / e.split.length;
+  const s = {};
+  e.split.forEach(p => { s[p] = share; });
+  return s;
+}
+
+/* ---------------- settlement calc ---------------- */
+function computeBalances(expenseList) {
+  const list = expenseList || state.expenses;
+  const b = {};
+  state.people.forEach(p => b[p] = 0);
+  list.forEach(e => {
+    const shares = sharesFor(e);
+    Object.entries(shares).forEach(([p, amt]) => { b[p] = (b[p] || 0) - amt; });
+    b[e.payer] = (b[e.payer] || 0) + e.amount;
+  });
+  return b;
+}
+function computeSettlements(balances) {
+  const creditors = [], debtors = [];
+  Object.entries(balances).forEach(([name, v]) => {
+    const r = Math.round(v * 100) / 100;
+    if (r > 0.005) creditors.push({ name, amt: r });
+    else if (r < -0.005) debtors.push({ name, amt: -r });
+  });
+  creditors.sort((a,b) => b.amt - a.amt);
+  debtors.sort((a,b) => b.amt - a.amt);
+  const txns = [];
+  let i = 0, j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const pay = Math.min(debtors[i].amt, creditors[j].amt);
+    txns.push({ from: debtors[i].name, to: creditors[j].name, amt: Math.round(pay) });
+    debtors[i].amt -= pay; creditors[j].amt -= pay;
+    if (debtors[i].amt < 0.01) i++;
+    if (creditors[j].amt < 0.01) j++;
+  }
+  return txns;
+}
+
+/* ---------------- render: itinerary tab ---------------- */
+function renderItinerary() {
+  const days = state.days;
+  const idx = days.findIndex(d => d.id === state.activeDayId);
+  const active = days[idx] || days[0];
+
+  const tabs = days.map((d, i) => `
+    <div class="station-tab${d.id === state.activeDayId ? " active" : ""}" data-action="select-day" data-day="${d.id}">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;"><span class="code">${i+1}</span>DAY ${i+1}</div>
+      <div class="disp" style="font-size:13px;margin-top:2px;white-space:nowrap;">${esc(d.date.slice(5).replace("-", "/"))}（${esc(d.dow)}）</div>
+    </div>`).join("");
+
+  const themeBlock = state.editingDay
+    ? `<div style="padding:0 20px 8px;"><input type="text" data-action="edit-theme" value="${esc(active.theme)}" placeholder="這天的主題" /></div>`
+    : "";
+
+  const items = active.items.map((it, i) => {
+    const howBlock = it.how
+      ? `<details class="how-details"><summary>怎麼去</summary><div class="how-text">${esc(it.how)}</div></details>`
+      : "";
+    const mapUrl = mapUrlFor(it);
+    const mapBtn = mapUrl
+      ? `<a class="map-btn" href="${esc(mapUrl)}" rel="noopener">📍 地圖</a>`
+      : "";
+    if (!state.editingDay) {
+      return `
+      <div class="item-row" data-idx="${i}">
+        <div class="dot">🚉</div>
+        <div class="card" style="flex:1;">
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <span class="disp" style="font-weight:700;font-size:14px;color:var(--brick);">${esc(it.t)}</span>
+            <span style="font-weight:600;font-size:14px;">${esc(it.title)}</span>
+          </div>
+          ${it.note ? `<div style="font-size:12px;color:var(--moss);margin-top:3px;white-space:pre-wrap;">${esc(it.note)}</div>` : ""}
+          ${mapBtn ? `<div style="margin-top:8px;">${mapBtn}</div>` : ""}
+          ${howBlock}
+        </div>
+      </div>`;
+    }
+    return `
+      <div class="item-row" data-idx="${i}">
+        <div class="dot">🚉</div>
+        <div class="card" style="flex:1;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;gap:6px;">
+            <input type="text" style="width:66px;" data-action="edit-item" data-idx="${i}" data-field="t" value="${esc(it.t)}" placeholder="時間" />
+            <input type="text" style="flex:1;" data-action="edit-item" data-idx="${i}" data-field="title" value="${esc(it.title)}" placeholder="行程項目" />
+            <button class="icon-btn" data-action="remove-item" data-idx="${i}" style="color:var(--brick);">✕</button>
+          </div>
+          <textarea data-action="edit-item" data-idx="${i}" data-field="note" placeholder="備註 / 地點">${esc(it.note)}</textarea>
+          <textarea data-action="edit-item" data-idx="${i}" data-field="how" placeholder="怎麼去（路線、轉乘、車程⋯留空則不顯示）">${esc(it.how || "")}</textarea>
+          <input type="text" data-action="edit-item" data-idx="${i}" data-field="map" value="${esc(it.map || "")}" placeholder="Google 地圖連結（填了會同時顯示「導航」按鈕）" />
+        </div>
+      </div>`;
+  }).join("");
+
+  const addBtn = state.editingDay
+    ? `<button class="icon-btn" data-action="add-item" style="margin-left:44px;border:1.5px dashed var(--moss);border-radius:10px;padding:8px 14px;color:var(--moss);font-size:13px;font-weight:600;">＋ 新增項目</button>`
+    : "";
+
+  return `
+    <div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding:14px 16px 10px;">${tabs}</div>
+      <div style="padding:0 20px 8px;text-align:right;">
+        <button data-action="sync-latest" style="background:none;border:none;color:var(--brass);font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;">↺ 套用最新版行程＋旅伴名單</button>
+      </div>
+      <div style="padding:4px 20px 8px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="icon-btn" data-action="prev-day" ${idx===0?"disabled style='opacity:.3'":""}>‹</button>
+          <div>
+            <div class="disp" style="font-size:22px;font-weight:700;line-height:1.1;">${esc(active.theme)}</div>
+            <div style="font-size:12px;color:var(--moss);margin-top:2px;">${esc(active.date)}（${esc(active.dow)}）</div>
+          </div>
+          <button class="icon-btn" data-action="next-day" ${idx===days.length-1?"disabled style='opacity:.3'":""}>›</button>
+        </div>
+        <button data-action="toggle-edit-day" style="background:${state.editingDay?"var(--ink)":"var(--surface)"};color:${state.editingDay?"#fff":"var(--ink)"};border:1.5px solid var(--ink);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;">
+          ✎ ${state.editingDay ? "完成" : "編輯"}
+        </button>
+      </div>
+      ${themeBlock}
+      <div class="rail-wrap">
+        <div class="rail-line"></div>
+        <div class="items-list">
+          ${items || `<div style="padding-left:34px;color:var(--moss);font-size:13px;">這天還沒有安排行程。</div>`}
+        </div>
+        ${addBtn}
+      </div>
+    </div>`;
+}
+
+/* ---------------- render: bill tab ---------------- */
+function renderBill() {
+  const filterDay = state.billDayFilter; // "all" or a day id
+  const visibleExpenses = filterDay === "all" ? state.expenses : state.expenses.filter(e => e.dayId === filterDay);
+  const total = visibleExpenses.reduce((s, e) => s + e.amount, 0);
+  const balances = computeBalances(visibleExpenses);
+  const settlements = computeSettlements(balances);
+
+  const dayLabel = (id) => {
+    const d = state.days.find(x => x.id === id);
+    return d ? d.date.slice(5).replace("-", "/") : "";
+  };
+
+  const filterPills = `
+    <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;">
+      <button class="pill-btn${filterDay==="all"?" on":""}" data-action="set-bill-filter" data-day="all" style="flex:0 0 auto;">全部</button>
+      ${state.days.map(d => `<button class="pill-btn${filterDay===d.id?" on":""}" data-action="set-bill-filter" data-day="${d.id}" style="flex:0 0 auto;">${esc(d.date.slice(5).replace("-", "/"))}</button>`).join("")}
+    </div>`;
+
+  const peopleChips = state.people.map(p => `
+    <span style="display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:5px 6px 5px 12px;font-size:13px;">
+      ${esc(p)}
+      <button class="icon-btn" data-action="remove-person" data-name="${esc(p)}" style="background:var(--paper);border-radius:50%;width:18px;height:18px;justify-content:center;">✕</button>
+    </span>`).join("");
+
+  const custTotal = state.people.reduce((s, p) => s + (parseFloat(state.billForm.customShares[p]) || 0), 0);
+  const amtNum = parseFloat(state.billForm.amount) || 0;
+  const custDiff = Math.round((amtNum - custTotal) * 100) / 100;
+
+  const formBlock = state.showBillForm ? `
+    <div class="card" style="margin-bottom:12px;">
+      <input type="text" data-action="bill-field" data-field="title" value="${esc(state.billForm.title)}" placeholder="項目名稱（例如：築地午餐）" style="margin-bottom:8px;" />
+      <input type="text" inputmode="decimal" data-action="bill-field" data-field="amount" value="${esc(state.billForm.amount)}" placeholder="總金額（円）" style="margin-bottom:8px;" />
+
+      <div style="font-size:12px;color:var(--moss);margin-bottom:4px;">哪一天的支出？</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+        <button class="pill-btn${!state.billForm.dayId?" on":""}" data-action="set-bill-day" data-day="">不指定</button>
+        ${state.days.map(d => `<button class="pill-btn${state.billForm.dayId===d.id?" on":""}" data-action="set-bill-day" data-day="${d.id}">${esc(d.date.slice(5).replace("-", "/"))}</button>`).join("")}
+      </div>
+
+      <div style="font-size:12px;color:var(--moss);margin-bottom:4px;">誰付的錢？</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+        ${state.people.map(p => `<button class="pill-btn${state.billForm.payer===p?" on":""}" data-action="set-payer" data-name="${esc(p)}">${esc(p)}</button>`).join("")}
+      </div>
+
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <button class="pill-btn${state.billForm.mode==="equal"?" on":""}" data-action="set-split-mode" data-mode="equal" style="flex:1;">均分</button>
+        <button class="pill-btn${state.billForm.mode==="custom"?" on":""}" data-action="set-split-mode" data-mode="custom" style="flex:1;">自訂金額</button>
+      </div>
+
+      ${state.billForm.mode === "equal" ? `
+        <div style="font-size:12px;color:var(--moss);margin-bottom:4px;">由誰均分？</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+          ${state.people.map(p => `<button class="pill-btn${state.billForm.split.includes(p)?" on":""}" data-action="toggle-split" data-name="${esc(p)}" style="border-color:var(--brass);${state.billForm.split.includes(p)?"background:var(--brass);":""}">${state.billForm.split.includes(p)?"✓ ":""}${esc(p)}</button>`).join("")}
+        </div>` : `
+        <div style="font-size:12px;color:var(--moss);margin-bottom:6px;">各自要付多少？</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">
+          ${state.people.map(p => `
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:13px;width:64px;flex:0 0 auto;">${esc(p)}</span>
+              <input type="text" inputmode="decimal" data-action="cust-share" data-name="${esc(p)}" value="${esc(state.billForm.customShares[p] || "")}" placeholder="0" style="flex:1;" />
+            </div>`).join("")}
+        </div>
+        <div id="custDiffHint" style="font-size:12px;margin-bottom:12px;color:${custDiff===0 ? "var(--moss)" : "var(--brick)"};font-weight:${custDiff===0?"400":"700"};">
+          ${custDiff === 0 ? `✓ 剛好分配完 ¥${custTotal.toLocaleString()}` : (custDiff > 0 ? `還差 ¥${custDiff.toLocaleString()} 未分配` : `已超過總金額 ¥${Math.abs(custDiff).toLocaleString()}`)}
+        </div>`}
+
+      <button data-action="submit-expense" style="width:100%;background:var(--brick);color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;font-size:13px;cursor:pointer;">儲存支出</button>
+    </div>` : "";
+
+  const expenseList = visibleExpenses.slice().reverse().map(e => {
+    const shares = sharesFor(e);
+    const names = Object.keys(shares);
+    const isEven = names.length > 0 && names.every(n => Math.abs(shares[n] - shares[names[0]]) < 0.01);
+    const breakdown = isEven
+      ? `${names.length} 人均分（${esc(names.join("、"))}）`
+      : names.map(n => `${esc(n)} ¥${Math.round(shares[n]).toLocaleString()}`).join("、");
+    const dTag = e.dayId ? `<span style="color:var(--brass);">${esc(dayLabel(e.dayId))}・</span>` : "";
+    return `
+    <div class="card" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+      <div>
+        <div style="font-weight:600;font-size:13px;">${esc(e.title)}</div>
+        <div style="font-size:11px;color:var(--moss);margin-top:2px;">${dTag}${esc(e.payer)} 付款 ・ ${breakdown}</div>
+      </div>
+      <div style="text-align:right;flex:0 0 auto;margin-left:10px;">
+        <div class="disp" style="font-weight:700;font-size:14px;">¥${e.amount.toLocaleString()}</div>
+        <button class="icon-btn" data-action="remove-expense" data-id="${e.id}" style="color:var(--brick);margin-top:4px;">🗑</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  const balanceRows = state.people.map(p => {
+    const v = Math.round(balances[p] || 0);
+    const label = v > 0 ? `應收 ¥${v.toLocaleString()}` : v < 0 ? `應付 ¥${Math.abs(v).toLocaleString()}` : "已結清";
+    const color = v > 0 ? "var(--moss)" : v < 0 ? "var(--brick)" : "var(--ink)";
+    return `<div style="display:flex;justify-content:space-between;font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:6px;">
+      <span>${esc(p)}</span><span style="font-weight:700;color:${color};">${label}</span></div>`;
+  }).join("");
+
+  const settleRows = settlements.length === 0
+    ? `<div style="font-size:13px;color:var(--moss);">${visibleExpenses.length === 0 ? "這個範圍還沒有支出紀錄" : "目前帳務已結清 🎉"}</div>`
+    : settlements.map(s => `
+      <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:6px;">
+        <span style="font-weight:700;">${esc(s.from)}</span><span style="color:var(--brass);">→</span><span style="font-weight:700;">${esc(s.to)}</span>
+        <span style="margin-left:auto;font-weight:700;color:var(--brick);">¥${s.amt.toLocaleString()}</span>
+      </div>`).join("");
+
+  const scopeLabel = filterDay === "all" ? "全部" : dayLabel(filterDay);
+
+  return `
+    <div style="padding:16px 20px 20px;">
+      <div class="disp" style="font-size:22px;font-weight:700;margin-bottom:4px;">分帳</div>
+      <div style="font-size:12px;color:var(--moss);margin-bottom:12px;">${esc(scopeLabel)}總支出 ¥${total.toLocaleString()}（共 ${visibleExpenses.length} 筆）</div>
+
+      ${filterPills}
+
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;">👥 旅伴</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">${peopleChips}</div>
+      <div style="display:flex;gap:6px;margin-bottom:18px;">
+        <input type="text" id="newPersonInput" value="${esc(state.newPerson)}" placeholder="新增旅伴姓名" style="flex:1;" />
+        <button data-action="add-person" style="background:var(--ink);color:#fff;border:none;border-radius:8px;padding:0 14px;cursor:pointer;">＋</button>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:13px;">🧾 支出紀錄</div>
+        <button data-action="toggle-bill-form" style="display:flex;align-items:center;gap:5px;background:${state.showBillForm?"var(--ink)":"var(--brick)"};color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;" ${state.people.length===0?"disabled":""}>
+          ＋ ${state.showBillForm ? "取消" : "新增支出"}
+        </button>
+      </div>
+      ${formBlock}
+      ${visibleExpenses.length===0 ? `<div style="font-size:13px;color:var(--moss);padding:10px 0;">這個範圍還沒有支出紀錄。</div>` : ""}
+      <div style="margin-bottom:20px;">${expenseList}</div>
+
+      ${state.people.length > 0 ? `
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;">💰 ${esc(scopeLabel)}餘額</div>
+      <div style="margin-bottom:20px;">${balanceRows}</div>
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;">🔁 ${filterDay==="all" ? "建議還款" : "當日結清建議"}</div>
+      <div>${settleRows}</div>` : ""}
+    </div>`;
+}
+
+/* ---------------- render: prep (行前準備) tab ---------------- */
+function renderPrep() {
+  const packedCount = state.checklist.filter(i => i.packed).length;
+  const total = state.checklist.length;
+
+  const checklistRows = state.checklist.map(item => `
+    <div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 12px;">
+      <label style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer;">
+        <input type="checkbox" data-action="toggle-pack" data-id="${item.id}" ${item.packed ? "checked" : ""} style="width:18px;height:18px;accent-color:var(--brick);" />
+        <span style="font-size:14px;${item.packed ? "text-decoration:line-through;color:var(--moss);" : ""}">${esc(item.text)}</span>
+      </label>
+      <button class="icon-btn" data-action="remove-checklist-item" data-id="${item.id}" style="color:var(--brick);">✕</button>
+    </div>`).join("");
+
+  const qrBlock = state.vjw.qrDataUrl ? `
+    <div class="card" style="text-align:center;padding:14px;">
+      <img src="${state.vjw.qrDataUrl}" alt="Visit Japan Web QR Code" style="max-width:100%;border-radius:8px;" />
+      <div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">
+        <label class="pill-btn" style="cursor:pointer;">
+          重新上傳
+          <input type="file" accept="image/*" data-action="upload-qr" style="display:none;" />
+        </label>
+        <button class="pill-btn" data-action="remove-qr" style="border-color:var(--brick);color:var(--brick);">刪除</button>
+      </div>
+    </div>` : `
+    <div class="card" style="text-align:center;padding:20px 14px;">
+      <div style="font-size:13px;color:var(--moss);margin-bottom:10px;">還沒有上傳 QR Code。完成 Visit Japan Web 登記後，把畫面截圖上傳，通關時就能直接開這頁快速出示。</div>
+      <label class="pill-btn" style="cursor:pointer;display:inline-block;">
+        📷 上傳 QR Code 截圖
+        <input type="file" accept="image/*" data-action="upload-qr" style="display:none;" />
+      </label>
+    </div>`;
+
+  return `
+    <div style="padding:16px 20px 20px;">
+      <div class="disp" style="font-size:22px;font-weight:700;margin-bottom:4px;">行前準備</div>
+      <div style="font-size:12px;color:var(--moss);margin-bottom:16px;">出發前確認好，安心出門</div>
+
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;">🛂 Visit Japan Web</div>
+      <div style="font-size:12px;color:var(--moss);margin-bottom:10px;">入境審查／海關申報用，建議先在網站完成登記，通關時出示 QR Code。</div>
+      <a href="https://www.vjw.digital.go.jp/" rel="noopener" class="nav-link-btn" style="margin-bottom:12px;display:inline-flex;">🔗 前往 Visit Japan Web 網站</a>
+      <div style="margin-bottom:22px;">${qrBlock}</div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:13px;">🎒 行李清單</div>
+        <div style="font-size:12px;color:var(--moss);">${packedCount} / ${total} 已準備</div>
+      </div>
+      <div style="margin-bottom:10px;">${checklistRows || `<div style="font-size:13px;color:var(--moss);padding:6px 0;">清單是空的，新增第一項吧。</div>`}</div>
+      <div style="display:flex;gap:6px;margin-bottom:26px;">
+        <input type="text" id="newChecklistInput" value="${esc(state.newChecklistItem)}" placeholder="新增要帶的東西" style="flex:1;" />
+        <button data-action="add-checklist-item" style="background:var(--ink);color:#fff;border:none;border-radius:8px;padding:0 14px;cursor:pointer;">＋</button>
+      </div>
+
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;">🤖 給 Claude 看目前資料</div>
+      <div class="card" style="padding:14px;">
+        <div style="font-size:12px;color:var(--moss);margin-bottom:10px;">想請 Claude 照你手機上實際改過的內容更新檔案時，點下面按鈕會列出目前所有資料，複製整段貼到跟 Claude 的對話裡就可以了（不含 QR Code 圖片，那個太大了）。</div>
+        <button data-action="toggle-data-dump" style="width:100%;background:var(--ink);color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;font-size:13px;cursor:pointer;">${state.showDataDump ? "隱藏" : "顯示目前資料"}</button>
+        ${state.showDataDump ? `
+          <textarea id="dataDumpText" readonly style="width:100%;min-height:160px;margin-top:10px;font-family:monospace;font-size:11px;" onclick="this.select()">${esc(JSON.stringify({ days: state.days, people: state.people, expenses: state.expenses, checklist: state.checklist }, null, 2))}</textarea>
+          <button data-action="copy-data-dump" style="width:100%;margin-top:8px;background:var(--brass);color:#fff;border:none;border-radius:8px;padding:8px 0;font-weight:700;font-size:12px;cursor:pointer;">📋 複製</button>
+        ` : ""}
+      </div>
+    </div>`;
+}
+
+/* ---------------- top-level render ---------------- */
+function render() {
+  const root = document.getElementById("root");
+  root.innerHTML = `
+    <div style="padding:20px 20px 4px;">
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--brass);font-weight:700;letter-spacing:2px;">🚃 TOKYO・KAMAKURA・NIKKO</div>
+      <div class="disp" style="font-size:26px;font-weight:700;margin-top:2px;">東京自由行</div>
+      <div style="font-size:12px;color:var(--moss);">2026.11.14 — 11.19</div>
+    </div>
+    ${state.tab === "itinerary" ? renderItinerary() : state.tab === "bill" ? renderBill() : renderPrep()}
+    <div class="bottom-nav">
+      <button class="nav-btn${state.tab==="prep"?" active":""}" data-action="set-tab" data-tab="prep">🎒<br/>行前準備</button>
+      <button class="nav-btn${state.tab==="itinerary"?" active":""}" data-action="set-tab" data-tab="itinerary">📅<br/>每日行程</button>
+      <button class="nav-btn${state.tab==="bill"?" active":""}" data-action="set-tab" data-tab="bill">🧾<br/>分帳</button>
+    </div>`;
+  attachEvents();
+  persist();
+}
+
+/* ---------------- events ---------------- */
+function attachEvents() {
+  const root = document.getElementById("root");
+
+  root.querySelectorAll("[data-action]").forEach(el => {
+    const action = el.dataset.action;
+
+    if (action === "select-day") {
+      el.addEventListener("click", () => { state.activeDayId = el.dataset.day; state.editingDay = false; render(); });
+    }
+    if (action === "prev-day" || action === "next-day") {
+      el.addEventListener("click", () => {
+        const idx = state.days.findIndex(d => d.id === state.activeDayId);
+        const n = idx + (action === "prev-day" ? -1 : 1);
+        if (n >= 0 && n < state.days.length) { state.activeDayId = state.days[n].id; render(); }
+      });
+    }
+    if (action === "toggle-edit-day") {
+      el.addEventListener("click", () => { state.editingDay = !state.editingDay; render(); });
+    }
+    if (action === "sync-latest") {
+      el.addEventListener("click", () => {
+        const ok = confirm("這會把每日行程和旅伴名單換成這個檔案裡最新的內容，你自己手動改過的行程項目、旅伴名單會被覆蓋（分帳金額紀錄和行前清單不受影響）。確定要套用嗎？");
+        if (!ok) return;
+        const keepId = state.activeDayId;
+        state.days = defaultDays();
+        state.people = defaultPeople();
+        state.activeDayId = state.days.find(d => d.id === keepId) ? keepId : state.days[0].id;
+        state.editingDay = false;
+        persist();
+        render();
+      });
+    }
+
+    if (action === "edit-theme") {
+      el.addEventListener("input", () => {
+        const d = state.days.find(d => d.id === state.activeDayId);
+        d.theme = el.value; persist();
+      });
+    }
+    if (action === "edit-item") {
+      el.addEventListener("input", () => {
+        const d = state.days.find(d => d.id === state.activeDayId);
+        const i = parseInt(el.dataset.idx, 10);
+        d.items[i][el.dataset.field] = el.value;
+        persist();
+      });
+    }
+    if (action === "remove-item") {
+      el.addEventListener("click", () => {
+        const d = state.days.find(d => d.id === state.activeDayId);
+        d.items.splice(parseInt(el.dataset.idx, 10), 1);
+        render();
+      });
+    }
+    if (action === "add-item") {
+      el.addEventListener("click", () => {
+        const d = state.days.find(d => d.id === state.activeDayId);
+        d.items.push({ t:"12:00", title:"新行程", note:"", how:"" });
+        render();
+      });
+    }
+    if (action === "set-tab") {
+      el.addEventListener("click", () => { state.tab = el.dataset.tab; render(); });
+    }
+    if (action === "add-person") {
+      el.addEventListener("click", () => {
+        const input = document.getElementById("newPersonInput");
+        const n = (input.value || "").trim();
+        if (n && !state.people.includes(n)) {
+          state.people.push(n);
+          state.billForm.split.push(n);
+          if (!state.billForm.payer) state.billForm.payer = n;
+        }
+        state.newPerson = "";
+        render();
+      });
+    }
+    if (action === "remove-person") {
+      el.addEventListener("click", () => {
+        const name = el.dataset.name;
+        state.people = state.people.filter(p => p !== name);
+        state.expenses = state.expenses.filter(e => e.payer !== name).map(e => {
+          const copy = { ...e };
+          if (copy.split) copy.split = copy.split.filter(p => p !== name);
+          if (copy.shares) { copy.shares = { ...copy.shares }; delete copy.shares[name]; }
+          return copy;
+        });
+        state.billForm.split = state.billForm.split.filter(p => p !== name);
+        delete state.billForm.customShares[name];
+        if (state.billForm.payer === name) state.billForm.payer = state.people[0] || "";
+        render();
+      });
+    }
+    if (action === "toggle-bill-form") {
+      el.addEventListener("click", () => {
+        state.showBillForm = !state.showBillForm;
+        if (state.showBillForm) {
+          const presetDay = state.billDayFilter !== "all" ? state.billDayFilter : null;
+          state.billForm = { title:"", amount:"", payer: state.people[0] || "", split: state.people.slice(), mode:"equal", customShares:{}, dayId: presetDay };
+        }
+        render();
+      });
+    }
+    if (action === "set-bill-filter") {
+      el.addEventListener("click", () => { state.billDayFilter = el.dataset.day; render(); });
+    }
+    if (action === "set-bill-day") {
+      el.addEventListener("click", () => { state.billForm.dayId = el.dataset.day || null; render(); });
+    }
+    if (action === "bill-field") {
+      el.addEventListener("input", () => {
+        let v = el.value;
+        if (el.dataset.field === "amount") v = v.replace(/[^0-9.]/g, "");
+        state.billForm[el.dataset.field] = v;
+        if (el.dataset.field === "amount") renderCustomDiffOnly();
+      });
+    }
+    if (action === "set-split-mode") {
+      el.addEventListener("click", () => { state.billForm.mode = el.dataset.mode; render(); });
+    }
+    if (action === "cust-share") {
+      el.addEventListener("input", () => {
+        const v = el.value.replace(/[^0-9.]/g, "");
+        state.billForm.customShares[el.dataset.name] = v;
+        renderCustomDiffOnly();
+      });
+    }
+    if (action === "set-payer") {
+      el.addEventListener("click", () => { state.billForm.payer = el.dataset.name; render(); });
+    }
+    if (action === "toggle-split") {
+      el.addEventListener("click", () => {
+        const n = el.dataset.name;
+        state.billForm.split = state.billForm.split.includes(n)
+          ? state.billForm.split.filter(p => p !== n)
+          : [...state.billForm.split, n];
+        render();
+      });
+    }
+    if (action === "submit-expense") {
+      el.addEventListener("click", () => {
+        const amt = parseFloat(state.billForm.amount);
+        if (!state.billForm.title.trim() || !amt || amt <= 0 || !state.billForm.payer) return;
+        let shares = {};
+        if (state.billForm.mode === "custom") {
+          state.people.forEach(p => {
+            const v = parseFloat(state.billForm.customShares[p]);
+            if (v > 0) shares[p] = v;
+          });
+          const sum = Object.values(shares).reduce((s, v) => s + v, 0);
+          if (Object.keys(shares).length === 0 || Math.abs(sum - amt) > 0.5) return; // must add up to total
+        } else {
+          if (state.billForm.split.length === 0) return;
+          const share = amt / state.billForm.split.length;
+          state.billForm.split.forEach(p => { shares[p] = share; });
+        }
+        state.expenses.push({ id: uid(), title: state.billForm.title.trim(), amount: amt, payer: state.billForm.payer, shares, dayId: state.billForm.dayId || null });
+        state.showBillForm = false;
+        render();
+      });
+    }
+    if (action === "remove-expense") {
+      el.addEventListener("click", () => {
+        state.expenses = state.expenses.filter(e => e.id !== el.dataset.id);
+        render();
+      });
+    }
+    if (action === "toggle-pack") {
+      el.addEventListener("change", () => {
+        const item = state.checklist.find(i => i.id === el.dataset.id);
+        if (item) item.packed = el.checked;
+        persist();
+        render();
+      });
+    }
+    if (action === "remove-checklist-item") {
+      el.addEventListener("click", () => {
+        state.checklist = state.checklist.filter(i => i.id !== el.dataset.id);
+        render();
+      });
+    }
+    if (action === "add-checklist-item") {
+      el.addEventListener("click", () => {
+        const input = document.getElementById("newChecklistInput");
+        const t = (input.value || "").trim();
+        if (t) state.checklist.push({ id: uid(), text: t, packed: false });
+        state.newChecklistItem = "";
+        render();
+      });
+    }
+    if (action === "upload-qr") {
+      el.addEventListener("change", () => {
+        const file = el.files && el.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            // downscale to keep localStorage usage small
+            const maxDim = 600;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            state.vjw.qrDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+            render();
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    if (action === "remove-qr") {
+      el.addEventListener("click", () => {
+        state.vjw.qrDataUrl = null;
+        render();
+      });
+    }
+    if (action === "toggle-data-dump") {
+      el.addEventListener("click", () => { state.showDataDump = !state.showDataDump; render(); });
+    }
+    if (action === "copy-data-dump") {
+      el.addEventListener("click", () => {
+        const ta = document.getElementById("dataDumpText");
+        if (!ta) return;
+        ta.select();
+        try {
+          navigator.clipboard.writeText(ta.value).then(() => {
+            el.textContent = "✓ 已複製";
+            setTimeout(() => { el.textContent = "📋 複製"; }, 1500);
+          }).catch(() => { document.execCommand("copy"); });
+        } catch (e) {
+          document.execCommand("copy");
+        }
+      });
+    }
+  });
+
+  // keep un-rerendered text inputs snappy: don't lose focus on 'input' handlers above (they don't call render()).
+}
+
+/* Lightweight refresh of just the "remaining to allocate" hint under the
+   custom-amount inputs, so typing doesn't lose input focus via full re-render. */
+function renderCustomDiffOnly() {
+  const hint = document.getElementById("custDiffHint");
+  if (!hint) return;
+  const custTotal = state.people.reduce((s, p) => s + (parseFloat(state.billForm.customShares[p]) || 0), 0);
+  const amtNum = parseFloat(state.billForm.amount) || 0;
+  const diff = Math.round((amtNum - custTotal) * 100) / 100;
+  hint.style.color = diff === 0 ? "var(--moss)" : "var(--brick)";
+  hint.style.fontWeight = diff === 0 ? "400" : "700";
+  hint.textContent = diff === 0
+    ? `✓ 剛好分配完 ¥${custTotal.toLocaleString()}`
+    : (diff > 0 ? `還差 ¥${diff.toLocaleString()} 未分配` : `已超過總金額 ¥${Math.abs(diff).toLocaleString()}`);
+}
+
+render();
+</script>
+</body>
+</html>
