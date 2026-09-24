@@ -6,8 +6,8 @@
 <title>東京自由行 2026</title>
 <style>
   :root {
-    --ink:#1E2A38; --paper:#EFF1E9; --surface:#FFFFFF;
-    --brick:#A6402F; --brass:#B08D3D; --moss:#6E7A63; --line:#DBDCCF;
+    --ink:#4A443C; --paper:#F6F2EA; --surface:#FDFBF7;
+    --brick:#BD7A5C; --brass:#C7A96B; --moss:#8C9080; --line:#E7E1D5;
   }
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; }
@@ -19,43 +19,41 @@
   .disp { font-family: Georgia, "Noto Serif TC", serif; }
   button, input, textarea { font-family:inherit; }
   .station-tab {
-    flex:0 0 auto; cursor:pointer; border:2px solid var(--ink); background:var(--surface);
-    border-radius:6px; padding:8px 12px 7px; user-select:none;
+    flex:0 0 auto; cursor:pointer; border:1px solid var(--line); background:var(--surface);
+    border-radius:8px; padding:8px 12px 7px; user-select:none;
   }
-  .station-tab.active { background:var(--ink); color:#fff; box-shadow:0 3px 0 var(--brass); }
+  .station-tab.active { background:var(--brick); border-color:var(--brick); color:#fff; }
   .station-tab .code {
     display:inline-flex; align-items:center; justify-content:center;
     width:20px; height:20px; border-radius:50%; border:1.5px solid currentColor;
     font-size:10px; font-weight:700; margin-right:6px;
   }
   .rail-wrap { position:relative; padding:6px 20px 30px; }
-  .rail-line { position:absolute; left:35px; top:0; bottom:0; width:2px;
-    background:repeating-linear-gradient(to bottom, var(--brass) 0 6px, transparent 6px 11px); }
-  .card { background:var(--surface); border-radius:12px; padding:10px 12px; border:1px solid var(--line); }
-  .dot { width:32px; height:32px; border-radius:50%; background:var(--surface); border:2px solid var(--brick);
-    flex:0 0 32px; display:flex; align-items:center; justify-content:center; margin-top:2px; }
+  .rail-line { position:absolute; left:35px; top:0; bottom:0; width:1px; background:var(--line); }
+  .card { background:var(--surface); border-radius:10px; padding:10px 12px; border:1px solid var(--line); }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--brick);
+    flex:0 0 10px; margin-top:13px; margin-left:11px; }
   .how-details { margin-top:8px; }
-  .how-details summary { cursor:pointer; font-size:12px; color:var(--brass); font-weight:700; list-style:none; display:flex; align-items:center; gap:5px; }
+  .how-details summary { cursor:pointer; font-size:12px; color:var(--brass); font-weight:600; list-style:none; display:flex; align-items:center; gap:5px; }
   .how-details summary::-webkit-details-marker { display:none; }
-  .how-details summary:before { content:"🚃"; }
-  .how-details[open] summary:before { content:"🚃"; }
+  .how-details summary:before { content:"路"; font-family:'Noto Serif TC', serif; font-size:11px; }
   .how-text { margin-top:6px; font-size:12px; color:var(--moss); background:var(--paper); border-radius:8px; padding:8px 10px; line-height:1.6; white-space:pre-wrap; }
-  .pill-btn { border:1.5px solid var(--ink); border-radius:20px; padding:5px 12px; font-size:12px; cursor:pointer; background:transparent; color:var(--ink); }
-  .pill-btn.on { background:var(--ink); color:#fff; }
+  .pill-btn { border:1px solid var(--line); border-radius:20px; padding:5px 12px; font-size:12px; cursor:pointer; background:var(--surface); color:var(--ink); }
+  .pill-btn.on { background:var(--ink); border-color:var(--ink); color:#fff; }
   .icon-btn { background:none; border:none; cursor:pointer; color:var(--ink); display:inline-flex; align-items:center; }
-  input[type=text], textarea { width:100%; border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12px; }
+  input[type=text], textarea { width:100%; border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12px; background:var(--surface); color:var(--ink); }
   textarea { resize:vertical; min-height:44px; }
   .bottom-nav { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--line);
     display:flex; padding:8px 20px calc(env(safe-area-inset-bottom, 8px) + 6px); gap:10px; max-width:480px; margin:0 auto; }
   .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; cursor:pointer; color:var(--moss); font-size:11px; font-weight:700; }
   .nav-btn.active { color:var(--brick); }
   .map-btn, .nav-link-btn {
-    display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; text-decoration:none;
+    display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; text-decoration:none;
     border-radius:14px; padding:4px 10px; border:1px solid var(--line);
   }
-  .map-btn { color:var(--brick); background:#fdf3f0; border-color:#eccbc0; }
-  .nav-link-btn { color:var(--moss); background:#f1f3ec; border-color:var(--line); }
-  .item-row { position:relative; display:flex; gap:12px; margin-bottom:16px; }
+  .map-btn { color:var(--brick); background:var(--surface); }
+  .nav-link-btn { color:var(--moss); background:var(--surface); }
+  .item-row { position:relative; display:flex; gap:12px; margin-bottom:14px; }
   .item-row.dragging { opacity:0.55; }
 </style>
 </head>
@@ -267,7 +265,7 @@ function renderItinerary() {
     if (!state.editingDay) {
       return `
       <div class="item-row" data-idx="${i}">
-        <div class="dot">🚉</div>
+        <div class="dot"></div>
         <div class="card" style="flex:1;">
           <div style="display:flex;align-items:baseline;gap:8px;">
             <span class="disp" style="font-weight:700;font-size:14px;color:var(--brick);">${esc(it.t)}</span>
@@ -281,7 +279,7 @@ function renderItinerary() {
     }
     return `
       <div class="item-row" data-idx="${i}">
-        <div class="dot">🚉</div>
+        <div class="dot"></div>
         <div class="card" style="flex:1;display:flex;flex-direction:column;gap:6px;">
           <div style="display:flex;gap:6px;">
             <input type="text" style="width:66px;" data-action="edit-item" data-idx="${i}" data-field="t" value="${esc(it.t)}" placeholder="時間" />
@@ -540,7 +538,7 @@ function render() {
   const root = document.getElementById("root");
   root.innerHTML = `
     <div style="padding:20px 20px 4px;">
-      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--brass);font-weight:700;letter-spacing:2px;">🚃 TOKYO・KAMAKURA・NIKKO</div>
+      <div style="font-size:11px;color:var(--moss);font-weight:600;letter-spacing:2px;">TOKYO・KAMAKURA・NIKKO</div>
       <div class="disp" style="font-size:26px;font-weight:700;margin-top:2px;">東京自由行</div>
       <div style="font-size:12px;color:var(--moss);">2026.11.14 — 11.19</div>
     </div>
