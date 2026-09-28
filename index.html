@@ -33,10 +33,9 @@
   .card { background:var(--surface); border-radius:10px; padding:10px 12px; border:1px solid var(--line); }
   .dot { width:10px; height:10px; border-radius:50%; background:var(--brick);
     flex:0 0 10px; margin-top:13px; margin-left:11px; }
-  .how-details { margin-top:8px; }
-  .how-details summary { cursor:pointer; font-size:12px; color:var(--brass); font-weight:600; list-style:none; display:flex; align-items:center; gap:5px; }
+  .how-details { display:inline-block; }
+  .how-details summary { cursor:pointer; list-style:none; }
   .how-details summary::-webkit-details-marker { display:none; }
-  .how-details summary:before { content:"路"; font-family:'Noto Serif TC', serif; font-size:11px; }
   .how-text { margin-top:6px; font-size:12px; color:var(--moss); background:var(--paper); border-radius:8px; padding:8px 10px; line-height:1.6; white-space:pre-wrap; }
   .pill-btn { border:1px solid var(--line); border-radius:20px; padding:5px 12px; font-size:12px; cursor:pointer; background:var(--surface); color:var(--ink); }
   .pill-btn.on { background:var(--ink); border-color:var(--ink); color:#fff; }
@@ -246,7 +245,7 @@ function renderItinerary() {
 
   const tabs = days.map((d, i) => `
     <div class="station-tab${d.id === state.activeDayId ? " active" : ""}" data-action="select-day" data-day="${d.id}">
-      <div style="font-size:11px;font-weight:700;letter-spacing:1px;"><span class="code">${i+1}</span>DAY ${i+1}</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;">DAY ${i+1}</div>
       <div class="disp" style="font-size:13px;margin-top:2px;white-space:nowrap;">${esc(d.date.slice(5).replace("-", "/"))}（${esc(d.dow)}）</div>
     </div>`).join("");
 
@@ -255,12 +254,15 @@ function renderItinerary() {
     : "";
 
   const items = active.items.map((it, i) => {
-    const howBlock = it.how
-      ? `<details class="how-details"><summary>怎麼去</summary><div class="how-text">${esc(it.how)}</div></details>`
-      : "";
     const mapUrl = mapUrlFor(it);
     const mapBtn = mapUrl
       ? `<a class="map-btn" href="${esc(mapUrl)}" rel="noopener">📍 地圖</a>`
+      : "";
+    const howBlock = it.how
+      ? `<details class="how-details"><summary class="nav-link-btn">路線</summary><div class="how-text">${esc(it.how)}</div></details>`
+      : "";
+    const actionsRow = (mapBtn || howBlock)
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-top:8px;">${mapBtn}${howBlock}</div>`
       : "";
     if (!state.editingDay) {
       return `
@@ -272,8 +274,7 @@ function renderItinerary() {
             <span style="font-weight:600;font-size:14px;">${esc(it.title)}</span>
           </div>
           ${it.note ? `<div style="font-size:12px;color:var(--moss);margin-top:3px;white-space:pre-wrap;">${esc(it.note)}</div>` : ""}
-          ${mapBtn ? `<div style="margin-top:8px;">${mapBtn}</div>` : ""}
-          ${howBlock}
+          ${actionsRow}
         </div>
       </div>`;
     }
