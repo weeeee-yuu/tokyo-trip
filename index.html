@@ -483,25 +483,6 @@ function renderPrep() {
       <button class="icon-btn" data-action="remove-checklist-item" data-id="${item.id}" style="color:var(--brick);">✕</button>
     </div>`).join("");
 
-  const qrBlock = state.vjw.qrDataUrl ? `
-    <div class="card" style="text-align:center;padding:14px;">
-      <img src="${state.vjw.qrDataUrl}" alt="Visit Japan Web QR Code" style="max-width:100%;border-radius:8px;" />
-      <div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">
-        <label class="pill-btn" style="cursor:pointer;">
-          重新上傳
-          <input type="file" accept="image/*" data-action="upload-qr" style="display:none;" />
-        </label>
-        <button class="pill-btn" data-action="remove-qr" style="border-color:var(--brick);color:var(--brick);">刪除</button>
-      </div>
-    </div>` : `
-    <div class="card" style="text-align:center;padding:20px 14px;">
-      <div style="font-size:13px;color:var(--moss);margin-bottom:10px;">還沒有上傳 QR Code。完成 Visit Japan Web 登記後，把畫面截圖上傳，通關時就能直接開這頁快速出示。</div>
-      <label class="pill-btn" style="cursor:pointer;display:inline-block;">
-        📷 上傳 QR Code 截圖
-        <input type="file" accept="image/*" data-action="upload-qr" style="display:none;" />
-      </label>
-    </div>`;
-
   return `
     <div style="padding:16px 20px 20px;">
       <div class="disp" style="font-size:22px;font-weight:700;margin-bottom:4px;">行前準備</div>
@@ -510,7 +491,10 @@ function renderPrep() {
       <div style="font-weight:700;font-size:13px;margin-bottom:8px;">🛂 Visit Japan Web</div>
       <div style="font-size:12px;color:var(--moss);margin-bottom:10px;">入境審查／海關申報用，建議先在網站完成登記，通關時出示 QR Code。</div>
       <a href="https://www.vjw.digital.go.jp/" rel="noopener" class="nav-link-btn" style="margin-bottom:12px;display:inline-flex;">🔗 前往 Visit Japan Web 網站</a>
-      <div style="margin-bottom:22px;">${qrBlock}</div>
+      <div class="card" style="padding:12px 14px;margin-bottom:22px;">
+        <div style="font-size:12px;color:var(--brick);font-weight:600;">⏰ 記得先登記</div>
+        <div style="font-size:12px;color:var(--moss);margin-top:4px;">出發前上網站完成登記，通關時直接出示 Visit Japan Web 上的 QR Code 就好。</div>
+      </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <div style="font-weight:700;font-size:13px;">🎒 行李清單</div>
@@ -742,38 +726,6 @@ function attachEvents() {
         const t = (input.value || "").trim();
         if (t) state.checklist.push({ id: uid(), text: t, packed: false });
         state.newChecklistItem = "";
-        render();
-      });
-    }
-    if (action === "upload-qr") {
-      el.addEventListener("change", () => {
-        const file = el.files && el.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const img = new Image();
-          img.onload = () => {
-            // downscale to keep localStorage usage small
-            const maxDim = 600;
-            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-            const canvas = document.createElement("canvas");
-            canvas.width = Math.round(img.width * scale);
-            canvas.height = Math.round(img.height * scale);
-            const ctx = canvas.getContext("2d");
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            state.vjw.qrDataUrl = canvas.toDataURL("image/jpeg", 0.85);
-            render();
-          };
-          img.src = reader.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-    if (action === "remove-qr") {
-      el.addEventListener("click", () => {
-        state.vjw.qrDataUrl = null;
         render();
       });
     }
