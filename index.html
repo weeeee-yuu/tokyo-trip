@@ -19,20 +19,17 @@
   .disp { font-family: Georgia, "Noto Serif TC", serif; }
   button, input, textarea { font-family:inherit; }
   .station-tab {
-    flex:0 0 auto; cursor:pointer; border:1px solid var(--line); background:var(--surface);
-    border-radius:8px; padding:8px 12px 7px; user-select:none;
+    cursor:pointer; border:none; background:var(--surface);
+    border-radius:12px; padding:9px 6px 8px; user-select:none; text-align:center;
+    box-shadow:0 1px 2px rgba(74,68,60,0.07), 0 1px 4px rgba(74,68,60,0.05);
   }
-  .station-tab.active { background:var(--brick); border-color:var(--brick); color:#fff; }
-  .station-tab .code {
-    display:inline-flex; align-items:center; justify-content:center;
-    width:20px; height:20px; border-radius:50%; border:1.5px solid currentColor;
-    font-size:10px; font-weight:700; margin-right:6px;
-  }
+  .station-tab.active { background:var(--brick); color:#fff; box-shadow:0 2px 6px rgba(189,122,92,0.35); }
   .rail-wrap { position:relative; padding:6px 20px 30px; }
   .rail-line { position:absolute; left:35px; top:0; bottom:0; width:1px; background:var(--line); }
-  .card { background:var(--surface); border-radius:10px; padding:10px 12px; border:1px solid var(--line); }
+  .card { background:var(--surface); border-radius:14px; padding:11px 13px; border:none;
+    box-shadow:0 1px 2px rgba(74,68,60,0.06), 0 2px 8px rgba(74,68,60,0.04); }
   .dot { width:10px; height:10px; border-radius:50%; background:var(--brick);
-    flex:0 0 10px; margin-top:13px; margin-left:11px; }
+    flex:0 0 10px; margin-top:13px; margin-left:11px; box-shadow:0 0 0 3px var(--paper); }
   .how-details { display:inline-block; }
   .how-details summary { cursor:pointer; list-style:none; }
   .how-details summary::-webkit-details-marker { display:none; }
@@ -48,7 +45,8 @@
   .nav-btn.active { color:var(--brick); }
   .map-btn, .nav-link-btn {
     display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; text-decoration:none;
-    border-radius:14px; padding:4px 10px; border:1px solid var(--line);
+    border-radius:14px; padding:4px 10px; border:none;
+    box-shadow:0 1px 2px rgba(74,68,60,0.06), 0 1px 3px rgba(74,68,60,0.04);
   }
   .map-btn { color:var(--brick); background:var(--surface); }
   .nav-link-btn { color:var(--moss); background:var(--surface); }
@@ -245,8 +243,10 @@ function renderItinerary() {
 
   const tabs = days.map((d, i) => `
     <div class="station-tab${d.id === state.activeDayId ? " active" : ""}" data-action="select-day" data-day="${d.id}">
-      <div style="font-size:11px;font-weight:700;letter-spacing:1px;">DAY ${i+1}</div>
-      <div class="disp" style="font-size:13px;margin-top:2px;white-space:nowrap;">${esc(d.date.slice(5).replace("-", "/"))}（${esc(d.dow)}）</div>
+      <div style="display:flex;align-items:baseline;justify-content:center;gap:5px;white-space:nowrap;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.5px;">DAY ${i+1}</span>
+        <span class="disp" style="font-size:12px;">${esc(d.date.slice(5).replace("-", "/"))}（${esc(d.dow)}）</span>
+      </div>
     </div>`).join("");
 
   const themeBlock = state.editingDay
@@ -300,7 +300,7 @@ function renderItinerary() {
 
   return `
     <div>
-      <div style="display:flex;gap:8px;overflow-x:auto;padding:14px 16px 10px;">${tabs}</div>
+      <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;padding:14px 16px 10px;">${tabs}</div>
       <div style="padding:0 20px 8px;text-align:right;">
         <button data-action="sync-latest" style="background:none;border:none;color:var(--brass);font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;">↺ 套用最新版行程＋旅伴名單</button>
       </div>
@@ -539,9 +539,10 @@ function render() {
   const root = document.getElementById("root");
   root.innerHTML = `
     <div style="padding:20px 20px 4px;">
-      <div style="font-size:11px;color:var(--moss);font-weight:600;letter-spacing:2px;">TOKYO・KAMAKURA・NIKKO</div>
+      <div style="font-size:11px;color:var(--brass);font-weight:700;letter-spacing:2px;">TOKYO・KAMAKURA・NIKKO</div>
       <div class="disp" style="font-size:26px;font-weight:700;margin-top:2px;">東京自由行</div>
-      <div style="font-size:12px;color:var(--moss);">2026.11.14 — 11.19</div>
+      <div style="font-size:12px;color:var(--moss);margin-top:1px;">2026.11.14 — 11.19</div>
+      <div style="height:2px;width:36px;background:var(--brass);border-radius:2px;margin-top:10px;"></div>
     </div>
     ${state.tab === "itinerary" ? renderItinerary() : state.tab === "bill" ? renderBill() : renderPrep()}
     <div class="bottom-nav">
