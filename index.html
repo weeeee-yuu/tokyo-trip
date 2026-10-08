@@ -69,10 +69,10 @@ function defaultDays() {
   return [
     { id:"d1", date:"2026-11-14", dow:"六", theme:"哈利波特舞台劇", items:[
       { t:"05:00", title:"機場集合", note:"備註｜長榮 BR184（TPE 2航廈）" },
-      { t:"07:55", title:"班機起飛", note:"備註｜TPE→NRT\n抵達｜12:00" },
-      { t:"13:32", title:"Access特急 前往三田站", note:"備註｜¥1,550・不需買指定席・三田站(A08)下車", how:"車程約75分鐘\n可查詢「駅別時刻表｜京成電鉄」" },
+      { t:"07:55-12:00", title:"TPE→NRT", note:"VJW/紙本都準備 看哪個人少用哪個入境" },
+      { t:"13:42", title:"Access特急 前往三田站", note:"備註｜直接刷suica即可・三田站(A08)下車\n備註｜直通車：往 羽田機場(下一班：14:22)", how:"備案\n如果錯過直通車，可以先搭乘往「上野」或「京成高砂」方向的 Access 特急：\n搭至日本橋站\n同站轉乘 「都營淺草線」（往西馬込 / 羽田機場方向）" },
       { t:"15:00", title:"相鐵フレッサイン東京田町 Check-in", note:"備註｜予約番号 TDF59B8E2AFF9・休息半小時", map:"https://maps.app.goo.gl/BbacBnmH3wmEuZja9" },
-      { t:"16:00", title:"休息完準備出門", note:"" },
+      { t:"16:00", title:"休息完準備出門", note:"先去超商買晚餐" },
       { t:"16:30", title:"赤阪ACT劇場", note:"", how:"都營三田線(往西高島平)｜三田→日比谷(6分/4站)\n步行3分轉地鐵\n千代田線(往代代木上原)｜日比谷→赤阪(5分/3站)\n3B出口步行3分", map:"https://maps.app.goo.gl/CXAnvA3QDM8xXEMNA" },
       { t:"17:00", title:"抵達赤阪．先過安檢", note:"備註｜中文導覽，押金現金 ¥10,000" },
       { t:"18:15-21:55", title:"舞台劇開演", note:"備註｜約3小時40分鐘" },
@@ -90,7 +90,7 @@ function defaultDays() {
       { t:"18:40-", title:"回飯店", note:"", how:"JR山手線(內環．往澀谷) ｜池袋→田町(36分/14站)", map:"https://maps.app.goo.gl/ZsJUHjp5S7MVzGEN7" },
     ]},
     { id:"d3", date:"2026-11-16", dow:"一", theme:"鎌倉與長谷寺夜楓", items:[
-      { t:"08:00-09:15", title:"飯店吃早餐", note:"" },
+      { t:"08:00-09:15", title:"飯店吃早餐", note:"備註｜09:30左右搭車" },
       { t:"10:30-11:30", title:"北鎌倉圓覺寺", note:"抵達｜10:30\n行程｜賞楓🍁", how:"搭JR山手線或京濱東北線→品川\n轉JR橫須賀線直達北鎌倉站（約1小時）", map:"https://maps.app.goo.gl/94UbYw2xQwvp34kn6" },
       { t:"11:30-12:30", title:"往：鎌倉車站 吃午餐", note:"備註｜\n御成町食堂／鎌倉茶々冰淇淋(靜岡抹茶)\n小町通：Miyoshi手打釜揚うどん、甘味処鎌倉蕨餅、寿清庵抹茶可麗餅、夢見屋四色糰子、Giraffa Curry Pan咖喱麵包", map:"https://maps.app.goo.gl/qd2sBBUXrTxGwMLt8" },
       { t:"13:00-13:30", title:"鎌倉高校前", note:"行程｜拍照逗留約30分鐘", map:"https://maps.app.goo.gl/3PjKNjdBwicN41xv6" },
