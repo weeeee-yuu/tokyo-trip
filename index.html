@@ -52,6 +52,8 @@
   .nav-link-btn { color:var(--moss); background:var(--surface); }
   .item-row { position:relative; display:flex; gap:12px; margin-bottom:14px; }
   .item-row.dragging { opacity:0.55; }
+  .insert-btn { font-size:11px; color:var(--moss); border:1px dashed var(--line); border-radius:12px; padding:3px 10px; }
+  .mv-btn { font-size:12px; color:var(--moss); padding:0 4px; }
 </style>
 </head>
 <body>
@@ -280,13 +282,16 @@ function renderItinerary() {
         </div>
       </div>`;
     }
-    return `
+    const insertBtn = `<div style="margin:-6px 0 8px 34px;"><button class="icon-btn insert-btn" data-action="add-item" data-idx="${i}">＋ 在這裡插入</button></div>`;
+    return `${insertBtn}
       <div class="item-row" data-idx="${i}">
         <div class="dot"></div>
         <div class="card" style="flex:1;display:flex;flex-direction:column;gap:6px;">
           <div style="display:flex;gap:6px;">
-            <input type="text" style="width:66px;" data-action="edit-item" data-idx="${i}" data-field="t" value="${esc(it.t)}" placeholder="時間" />
+            <input type="text" style="width:92px;" data-action="edit-item" data-idx="${i}" data-field="t" value="${esc(it.t)}" placeholder="時間" />
             <input type="text" style="flex:1;" data-action="edit-item" data-idx="${i}" data-field="title" value="${esc(it.title)}" placeholder="行程項目" />
+            <button class="icon-btn mv-btn" data-action="move-item" data-idx="${i}" data-dir="-1" ${i===0?'disabled style="opacity:.25"':''}>▲</button>
+            <button class="icon-btn mv-btn" data-action="move-item" data-idx="${i}" data-dir="1" ${i===active.items.length-1?'disabled style="opacity:.25"':''}>▼</button>
             <button class="icon-btn" data-action="remove-item" data-idx="${i}" style="color:var(--brick);">✕</button>
           </div>
           <textarea data-action="edit-item" data-idx="${i}" data-field="note" placeholder="備註 / 地點">${esc(it.note)}</textarea>
@@ -297,7 +302,7 @@ function renderItinerary() {
   }).join("");
 
   const addBtn = state.editingDay
-    ? `<button class="icon-btn" data-action="add-item" style="margin-left:44px;border:1.5px dashed var(--moss);border-radius:10px;padding:8px 14px;color:var(--moss);font-size:13px;font-weight:600;">＋ 新增項目</button>`
+    ? `<button class="icon-btn" data-action="add-item" data-idx="${active.items.length}" style="margin-left:34px;border:1.5px dashed var(--moss);border-radius:10px;padding:8px 14px;color:var(--moss);font-size:13px;font-weight:600;">＋ 新增項目（最後）</button>`
     : "";
 
   return `
@@ -598,7 +603,18 @@ function attachEvents() {
     if (action === "add-item") {
       el.addEventListener("click", () => {
         const d = state.days.find(d => d.id === state.activeDayId);
-        d.items.push({ t:"12:00", title:"新行程", note:"", how:"" });
+        const at = el.dataset.idx !== undefined ? parseInt(el.dataset.idx, 10) : d.items.length;
+        d.items.splice(at, 0, { t:"12:00", title:"新行程", note:"", how:"" });
+        render();
+      });
+    }
+    if (action === "move-item") {
+      el.addEventListener("click", () => {
+        const d = state.days.find(d => d.id === state.activeDayId);
+        const i = parseInt(el.dataset.idx, 10);
+        const j = i + parseInt(el.dataset.dir, 10);
+        if (j < 0 || j >= d.items.length) return;
+        const tmp = d.items[i]; d.items[i] = d.items[j]; d.items[j] = tmp;
         render();
       });
     }
