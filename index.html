@@ -41,8 +41,8 @@
   textarea { resize:vertical; min-height:44px; }
   .bottom-nav { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--line);
     display:flex; padding:8px 20px calc(env(safe-area-inset-bottom, 8px) + 6px); gap:10px; max-width:480px; margin:0 auto; }
-  .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; cursor:pointer; color:var(--moss); font-size:11px; font-weight:700; }
-  .nav-btn.active { color:var(--brick); }
+  .nav-btn { flex:1; display:flex; align-items:center; justify-content:center; padding:10px 0; background:none; border:none; border-radius:8px; cursor:pointer; color:var(--moss); font-size:13px; font-weight:600; }
+  .nav-btn.active { color:var(--brick); background:var(--paper); font-weight:700; }
   .map-btn, .nav-link-btn {
     display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; text-decoration:none;
     border-radius:14px; padding:4px 10px; border:none;
@@ -189,6 +189,7 @@ const state = {
   people: (saved && saved.people) || defaultPeople(),
   expenses: (saved && saved.expenses) || defaultExpenses(),
   checklist: (saved && saved.checklist) || defaultChecklist(),
+  shopping: (saved && saved.shopping) || [],
   vjw: (saved && saved.vjw) || { qrDataUrl: null },
   tab: "itinerary",
   activeDayId: null,
@@ -198,13 +199,16 @@ const state = {
   showBillForm: false,
   newPerson: "",
   newChecklistItem: "",
+  shopFilter: "all",
+  showShopForm: false,
+  shopForm: { cat:"藥妝", place:"", text:"", note:"", link:"" },
   showDataDump: false,
 };
 state.activeDayId = state.days[0] ? state.days[0].id : null;
 if (!state.billForm.payer && state.people[0]) state.billForm.payer = state.people[0];
 if (state.billForm.split.length === 0) state.billForm.split = state.people.slice();
 
-function persist() { saveTrip({ days: state.days, people: state.people, expenses: state.expenses, checklist: state.checklist, vjw: state.vjw }); }
+function persist() { saveTrip({ days: state.days, people: state.people, expenses: state.expenses, checklist: state.checklist, shopping: state.shopping, vjw: state.vjw }); }
 
 /* Get each participant's share amount for an expense (supports both the
    older equal-split format and the newer custom per-person amounts). */
@@ -487,6 +491,73 @@ function renderBill() {
 }
 
 /* ---------------- render: prep (行前準備) tab ---------------- */
+/* ---------------- render: shopping list ---------------- */
+const SHOP_CATS = ["日用", "食物", "藥妝", "其他"];
+function normLink(u) {
+  u = (u || "").trim();
+  if (!u) return "";
+  return /^https?:\/\//i.test(u) ? u : "https://" + u;
+}
+function renderShopping() {
+  const list = state.shopping;
+  const boughtCount = list.filter(i => i.bought).length;
+  const f = state.shopFilter;
+  const sf = state.shopForm;
+  const shown = list.filter(i => f === "all" ? true : f === "todo" ? !i.bought : i.bought);
+
+  const itemRow = (item) => {
+    const link = normLink(item.link);
+    const title = item.place ? `${esc(item.place)}｜${esc(item.text)}` : esc(item.text);
+    return `
+    <div class="card" style="margin-bottom:8px;padding:10px 12px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <input type="checkbox" data-action="toggle-shop" data-id="${item.id}" ${item.bought ? "checked" : ""} style="width:18px;height:18px;margin-top:1px;accent-color:var(--brick);flex:0 0 auto;" />
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;${item.bought ? "text-decoration:line-through;color:var(--moss);font-weight:400;" : ""}">${title}</div>
+          ${item.note ? `<div style="font-size:12px;color:var(--moss);margin-top:3px;white-space:pre-wrap;">備註｜${esc(item.note)}</div>` : ""}
+          ${link ? `<div style="margin-top:8px;"><a class="map-btn" href="${esc(link)}" rel="noopener">連結</a></div>` : ""}
+        </div>
+        <button class="icon-btn" data-action="remove-shop" data-id="${item.id}" style="color:var(--brick);">✕</button>
+      </div>
+    </div>`;
+  };
+
+  const groups = SHOP_CATS.map(cat => {
+    const items = shown.filter(i => (SHOP_CATS.includes(i.cat) ? i.cat : "其他") === cat);
+    if (!items.length) return "";
+    return `<div style="font-weight:700;font-size:13px;margin:14px 0 8px;">${cat}</div>${items.map(itemRow).join("")}`;
+  }).join("");
+
+  const formBlock = state.showShopForm ? `
+    <div class="card" style="margin-bottom:12px;padding:12px;">
+      <div style="font-size:12px;color:var(--moss);margin-bottom:4px;">分類</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+        ${SHOP_CATS.map(c => `<button class="pill-btn${sf.cat===c?" on":""}" data-action="set-shop-cat" data-cat="${c}">${c}</button>`).join("")}
+      </div>
+      <input type="text" data-action="shop-field" data-field="place" value="${esc(sf.place)}" placeholder="購買地點（例如：松本清）" style="margin-bottom:6px;" />
+      <input type="text" data-action="shop-field" data-field="text" value="${esc(sf.text)}" placeholder="物品名稱" style="margin-bottom:6px;" />
+      <input type="text" data-action="shop-field" data-field="note" value="${esc(sf.note)}" placeholder="備註（可不填）" style="margin-bottom:6px;" />
+      <input type="text" data-action="shop-field" data-field="link" value="${esc(sf.link)}" placeholder="相關連結網址（可不填）" style="margin-bottom:10px;" />
+      <button data-action="add-shop" style="width:100%;background:var(--brick);color:#fff;border:none;border-radius:8px;padding:9px 0;font-weight:700;font-size:13px;cursor:pointer;">加到清單</button>
+    </div>` : "";
+
+  const pill = (key, label) => `<button class="pill-btn${f===key?" on":""}" data-action="set-shop-filter" data-filter="${key}">${label}</button>`;
+
+  return `
+    <div style="padding:16px 20px 20px;">
+      <div class="disp" style="font-size:22px;font-weight:700;margin-bottom:4px;">購買清單</div>
+      <div style="font-size:12px;color:var(--moss);margin-bottom:14px;">${boughtCount} / ${list.length} 已買</div>
+
+      <button data-action="toggle-shop-form" style="background:${state.showShopForm?"var(--ink)":"var(--brick)"};color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:12px;">${state.showShopForm ? "取消" : "＋ 新增"}</button>
+      ${formBlock}
+
+      <div style="height:1px;background:var(--line);margin:6px 0 14px;"></div>
+      <div style="display:flex;gap:6px;">${pill("all","全部")}${pill("todo","還沒買")}${pill("done","已買")}</div>
+
+      ${groups || `<div style="font-size:13px;color:var(--moss);padding:14px 0;">${list.length ? "這個分類沒有項目。" : "清單是空的，點「＋ 新增」加入想買的東西。"}</div>`}
+    </div>`;
+}
+
 function renderPrep() {
   const packedCount = state.checklist.filter(i => i.packed).length;
   const total = state.checklist.length;
@@ -528,7 +599,7 @@ function renderPrep() {
         <div style="font-size:12px;color:var(--moss);margin-bottom:10px;">想請 Claude 照你手機上實際改過的內容更新檔案時，點下面按鈕會列出目前所有資料，複製整段貼到跟 Claude 的對話裡就可以了（不含 QR Code 圖片，那個太大了）。</div>
         <button data-action="toggle-data-dump" style="width:100%;background:var(--ink);color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;font-size:13px;cursor:pointer;">${state.showDataDump ? "隱藏" : "顯示目前資料"}</button>
         ${state.showDataDump ? `
-          <textarea id="dataDumpText" readonly style="width:100%;min-height:160px;margin-top:10px;font-family:monospace;font-size:11px;" onclick="this.select()">${esc(JSON.stringify({ days: state.days, people: state.people, expenses: state.expenses, checklist: state.checklist }, null, 2))}</textarea>
+          <textarea id="dataDumpText" readonly style="width:100%;min-height:160px;margin-top:10px;font-family:monospace;font-size:11px;" onclick="this.select()">${esc(JSON.stringify({ days: state.days, people: state.people, expenses: state.expenses, checklist: state.checklist, shopping: state.shopping }, null, 2))}</textarea>
           <button data-action="copy-data-dump" style="width:100%;margin-top:8px;background:var(--brass);color:#fff;border:none;border-radius:8px;padding:8px 0;font-weight:700;font-size:12px;cursor:pointer;">📋 複製</button>
         ` : ""}
       </div>
@@ -545,11 +616,12 @@ function render() {
       <div style="font-size:12px;color:var(--moss);margin-top:1px;">2026.11.14 — 11.19</div>
       <div style="height:2px;width:36px;background:var(--brass);border-radius:2px;margin-top:10px;"></div>
     </div>
-    ${state.tab === "itinerary" ? renderItinerary() : state.tab === "bill" ? renderBill() : renderPrep()}
+    ${state.tab === "itinerary" ? renderItinerary() : state.tab === "bill" ? renderBill() : state.tab === "shop" ? renderShopping() : renderPrep()}
     <div class="bottom-nav">
-      <button class="nav-btn${state.tab==="prep"?" active":""}" data-action="set-tab" data-tab="prep">🎒<br/>行前準備</button>
-      <button class="nav-btn${state.tab==="itinerary"?" active":""}" data-action="set-tab" data-tab="itinerary">📅<br/>每日行程</button>
-      <button class="nav-btn${state.tab==="bill"?" active":""}" data-action="set-tab" data-tab="bill">🧾<br/>分帳</button>
+      <button class="nav-btn${state.tab==="prep"?" active":""}" data-action="set-tab" data-tab="prep">行前準備</button>
+      <button class="nav-btn${state.tab==="itinerary"?" active":""}" data-action="set-tab" data-tab="itinerary">每日行程</button>
+      <button class="nav-btn${state.tab==="bill"?" active":""}" data-action="set-tab" data-tab="bill">分帳</button>
+      <button class="nav-btn${state.tab==="shop"?" active":""}" data-action="set-tab" data-tab="shop">購買清單</button>
     </div>`;
   attachEvents();
   persist();
@@ -731,6 +803,41 @@ function attachEvents() {
     if (action === "remove-expense") {
       el.addEventListener("click", () => {
         state.expenses = state.expenses.filter(e => e.id !== el.dataset.id);
+        render();
+      });
+    }
+    if (action === "toggle-shop") {
+      el.addEventListener("change", () => {
+        const it = state.shopping.find(i => i.id === el.dataset.id);
+        if (it) it.bought = el.checked;
+        render();
+      });
+    }
+    if (action === "remove-shop") {
+      el.addEventListener("click", () => {
+        state.shopping = state.shopping.filter(i => i.id !== el.dataset.id);
+        render();
+      });
+    }
+    if (action === "set-shop-filter") {
+      el.addEventListener("click", () => { state.shopFilter = el.dataset.filter; render(); });
+    }
+    if (action === "toggle-shop-form") {
+      el.addEventListener("click", () => { state.showShopForm = !state.showShopForm; render(); });
+    }
+    if (action === "set-shop-cat") {
+      el.addEventListener("click", () => { state.shopForm.cat = el.dataset.cat; render(); });
+    }
+    if (action === "shop-field") {
+      el.addEventListener("input", () => { state.shopForm[el.dataset.field] = el.value; });
+    }
+    if (action === "add-shop") {
+      el.addEventListener("click", () => {
+        const sf = state.shopForm;
+        const t = (sf.text || "").trim();
+        if (!t) return;
+        state.shopping.push({ id: uid(), cat: sf.cat, place: (sf.place || "").trim(), text: t, note: (sf.note || "").trim(), link: (sf.link || "").trim(), bought: false });
+        state.shopForm = { cat: sf.cat, place: sf.place, text: "", note: "", link: "" };
         render();
       });
     }
