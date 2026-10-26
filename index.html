@@ -50,6 +50,12 @@
   }
   .map-btn { color:var(--brick); background:var(--surface); }
   .nav-link-btn { color:var(--moss); background:var(--surface); }
+  .card.now { box-shadow:0 0 0 1.5px var(--brick), 0 2px 8px rgba(189,122,92,0.25); }
+  .now-tag { font-size:10px; font-weight:700; color:#fff; background:var(--brick); border-radius:8px; padding:1px 7px; margin-left:auto; flex:0 0 auto; }
+  .sec { font-size:12px; font-weight:700; color:var(--moss); letter-spacing:1px; margin:24px 0 8px; }
+  .kv { display:flex; gap:12px; font-size:12px; line-height:1.7; margin-bottom:2px; }
+  .kv b { flex:0 0 36px; font-weight:600; color:var(--moss); }
+  .kv span { color:var(--ink); }
   .item-row { position:relative; display:flex; gap:12px; margin-bottom:14px; }
   .item-row.dragging { opacity:0.55; }
   .insert-btn { font-size:11px; color:var(--moss); border:1px dashed var(--line); border-radius:12px; padding:3px 10px; }
@@ -179,6 +185,19 @@ function defaultExpenses() {
   return [];
 }
 
+/* Current date/time in Japan (Asia/Tokyo), used to jump to today and mark the current stop. */
+function tokyoNow() {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false }).formatToParts(new Date());
+    const g = (t) => parts.find(p => p.type === t).value;
+    return { date: g("year") + "-" + g("month") + "-" + g("day"), mins: (parseInt(g("hour"), 10) % 24) * 60 + parseInt(g("minute"), 10) };
+  } catch (e) { return null; }
+}
+function startMins(t) {
+  const m = /(\d{1,2}):(\d{2})/.exec(t || "");
+  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+}
+
 /* ---------------- state ---------------- */
 /* Prefer data already saved on this device (someone's own live edits);
    otherwise fall back to a baked-in shared snapshot (from a shared file);
@@ -199,8 +218,16 @@ const state = {
   newPerson: "",
   newChecklistItem: "",
   showDataDump: false,
+  showTaxi: false,
+  taxiDest: "hotel",
 };
 state.activeDayId = state.days[0] ? state.days[0].id : null;
+(function () {
+  const now = tokyoNow();
+  if (!now) return;
+  const today = state.days.find(d => d.date === now.date);
+  if (today) { state.activeDayId = today.id; state.tab = "itinerary"; }
+})();
 if (!state.billForm.payer && state.people[0]) state.billForm.payer = state.people[0];
 if (state.billForm.split.length === 0) state.billForm.split = state.people.slice();
 
@@ -254,6 +281,11 @@ function renderItinerary() {
   const days = state.days;
   const idx = days.findIndex(d => d.id === state.activeDayId);
   const active = days[idx] || days[0];
+  let nowIdx = -1;
+  const nowInfo = tokyoNow();
+  if (nowInfo && active.date === nowInfo.date) {
+    active.items.forEach((it, k) => { const s = startMins(it.t); if (s !== null && s <= nowInfo.mins) nowIdx = k; });
+  }
 
   const tabs = days.map((d, i) => `
     <div class="station-tab${d.id === state.activeDayId ? " active" : ""}" data-action="select-day" data-day="${d.id}">
@@ -282,10 +314,11 @@ function renderItinerary() {
       return `
       <div class="item-row" data-idx="${i}">
         <div class="dot"></div>
-        <div class="card" style="flex:1;">
+        <div class="card${i === nowIdx ? " now" : ""}" style="flex:1;">
           <div style="display:flex;align-items:baseline;gap:8px;">
             <span class="disp" style="font-weight:700;font-size:14px;color:var(--brick);">${esc(it.t)}</span>
             <span style="font-weight:600;font-size:14px;">${esc(it.title)}</span>
+            ${i === nowIdx ? `<span class="now-tag">現在</span>` : ""}
           </div>
           ${it.note ? `<div style="font-size:12px;color:var(--moss);margin-top:3px;white-space:pre-wrap;">${esc(it.note)}</div>` : ""}
           ${actionsRow}
@@ -492,7 +525,7 @@ function renderPrep() {
   const total = state.checklist.length;
 
   const checklistRows = state.checklist.map(item => `
-    <div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 12px;">
+    <div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:6px;padding:8px 12px;">
       <label style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer;">
         <input type="checkbox" data-action="toggle-pack" data-id="${item.id}" ${item.packed ? "checked" : ""} style="width:18px;height:18px;accent-color:var(--brick);" />
         <span style="font-size:14px;${item.packed ? "text-decoration:line-through;color:var(--moss);" : ""}">${esc(item.text)}</span>
@@ -500,37 +533,76 @@ function renderPrep() {
       <button class="icon-btn" data-action="remove-checklist-item" data-id="${item.id}" style="color:var(--brick);">✕</button>
     </div>`).join("");
 
+  const kv = (k, v) => `<div class="kv"><b>${k}</b><span>${v}</span></div>`;
+
   return `
-    <div style="padding:16px 20px 20px;">
+    <div style="padding:16px 20px 24px;">
       <div class="disp" style="font-size:22px;font-weight:700;margin-bottom:4px;">行前準備</div>
-      <div style="font-size:12px;color:var(--moss);margin-bottom:16px;">出發前確認好，安心出門</div>
+      <div style="font-size:12px;color:var(--moss);">出發前確認好，安心出門</div>
 
-      <div style="font-weight:700;font-size:13px;margin-bottom:8px;">🛂 Visit Japan Web</div>
-      <div style="font-size:12px;color:var(--moss);margin-bottom:10px;">入境審查／海關申報用，建議先在網站完成登記，通關時出示 QR Code。</div>
-      <a href="https://www.vjw.digital.go.jp/" rel="noopener" class="nav-link-btn" style="margin-bottom:12px;display:inline-flex;">🔗 前往 Visit Japan Web 網站</a>
-      <div class="card" style="padding:12px 14px;margin-bottom:22px;">
-        <div style="font-size:12px;color:var(--brick);font-weight:600;">⏰ 記得先登記</div>
-        <div style="font-size:12px;color:var(--moss);margin-top:4px;">出發前上網站完成登記，通關時直接出示 Visit Japan Web 上的 QR Code 就好。</div>
+      <div class="sec">入境</div>
+      <div class="card" style="padding:12px 14px;">
+        <div style="font-size:14px;font-weight:700;">Visit Japan Web</div>
+        <div style="font-size:12px;color:var(--moss);margin:4px 0 10px;line-height:1.6;">出發前先上網站完成登記，通關時出示 QR Code。</div>
+        <a href="https://www.vjw.digital.go.jp/" rel="noopener" class="map-btn">前往網站</a>
       </div>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-weight:700;font-size:13px;">🎒 行李清單</div>
-        <div style="font-size:12px;color:var(--moss);">${packedCount} / ${total} 已準備</div>
+      <div class="sec">航班</div>
+      <div class="card" style="padding:12px 14px;">
+        ${kv("去程", "長榮 BR184｜TPE 2航廈<br/>07:55 起飛・12:00 抵達")}
+        <div style="height:1px;background:var(--line);margin:8px 0;"></div>
+        ${kv("回程", "長榮 BR197｜NRT 1航廈<br/>14:00 起飛・17:05 抵達")}
       </div>
-      <div style="margin-bottom:10px;">${checklistRows || `<div style="font-size:13px;color:var(--moss);padding:6px 0;">清單是空的，新增第一項吧。</div>`}</div>
-      <div style="display:flex;gap:6px;margin-bottom:26px;">
+
+      <div class="sec">住宿</div>
+      <div class="card" style="padding:12px 14px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:8px;">相鐵フレッサイン 東京田町</div>
+        ${kv("地址", "〒108-0023<br/>東京都港区芝浦3-14-21")}
+        ${kv("電話", "03-5442-2031")}
+        ${kv("交通", "JR田町駅 芝浦口（東口）步行約4分")}
+        ${kv("訂位", "TDF59B8E2AFF9")}
+        <div style="margin-top:10px;"><a class="map-btn" href="tel:0354422031">撥打飯店</a></div>
+      </div>
+
+      <div class="sec">給計程車司機看</div>
+      <div class="card" style="padding:12px 14px;">
+        <div style="font-size:12px;color:var(--moss);margin-bottom:10px;line-height:1.6;">點下去會顯示大字日文地址，直接拿給司機看。</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="pill-btn" data-action="toggle-taxi" data-dest="hotel" style="border-color:var(--brick);color:var(--brick);">回飯店（田町）</button>
+          <button class="pill-btn" data-action="toggle-taxi" data-dest="asakusa" style="border-color:var(--brick);color:var(--brick);">東武淺草站</button>
+        </div>
+      </div>
+
+      <div class="sec" style="display:flex;justify-content:space-between;align-items:baseline;"><span>行李清單</span><span style="font-weight:400;letter-spacing:0;">${packedCount} / ${total} 已準備</span></div>
+      <div style="margin-bottom:8px;">${checklistRows || `<div style="font-size:13px;color:var(--moss);padding:6px 0;">清單是空的，新增第一項吧。</div>`}</div>
+      <div style="display:flex;gap:6px;">
         <input type="text" id="newChecklistInput" value="${esc(state.newChecklistItem)}" placeholder="新增要帶的東西" style="flex:1;" />
         <button data-action="add-checklist-item" style="background:var(--ink);color:#fff;border:none;border-radius:8px;padding:0 14px;cursor:pointer;">＋</button>
       </div>
 
-      <div style="font-weight:700;font-size:13px;margin-bottom:8px;">🤖 給 Claude 看目前資料</div>
-      <div class="card" style="padding:14px;">
-        <div style="font-size:12px;color:var(--moss);margin-bottom:10px;">想請 Claude 照你手機上實際改過的內容更新檔案時，點下面按鈕會列出目前所有資料，複製整段貼到跟 Claude 的對話裡就可以了（不含 QR Code 圖片，那個太大了）。</div>
-        <button data-action="toggle-data-dump" style="width:100%;background:var(--ink);color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;font-size:13px;cursor:pointer;">${state.showDataDump ? "隱藏" : "顯示目前資料"}</button>
-        ${state.showDataDump ? `
-          <textarea id="dataDumpText" readonly style="width:100%;min-height:160px;margin-top:10px;font-family:monospace;font-size:11px;" onclick="this.select()">${esc(JSON.stringify({ days: state.days, people: state.people, expenses: state.expenses, checklist: state.checklist }, null, 2))}</textarea>
-          <button data-action="copy-data-dump" style="width:100%;margin-top:8px;background:var(--brass);color:#fff;border:none;border-radius:8px;padding:8px 0;font-weight:700;font-size:12px;cursor:pointer;">📋 複製</button>
-        ` : ""}
+      <div class="sec">資料備份</div>
+      <div style="font-size:12px;color:var(--moss);line-height:1.6;margin-bottom:8px;">想請 Claude 照你手機上改過的內容更新檔案時，在這裡複製目前資料貼給 Claude。</div>
+      <button data-action="toggle-data-dump" class="pill-btn">${state.showDataDump ? "隱藏" : "顯示目前資料"}</button>
+      ${state.showDataDump ? `
+        <textarea id="dataDumpText" readonly style="width:100%;min-height:160px;margin-top:10px;font-family:monospace;font-size:11px;" onclick="this.select()">${esc(JSON.stringify({ days: state.days, people: state.people, expenses: state.expenses, checklist: state.checklist }, null, 2))}</textarea>
+        <button data-action="copy-data-dump" class="pill-btn" style="margin-top:8px;">複製</button>
+      ` : ""}
+    </div>`;
+}
+
+function taxiOverlay() {
+  const asakusa = state.taxiDest === "asakusa";
+  const body = asakusa ? `
+        <div style="font-size:30px;font-weight:700;line-height:1.35;margin-bottom:14px;">東武浅草駅<br/><span style="font-size:22px;font-weight:600;">（松屋浅草）</span></div>
+        <div style="font-size:22px;line-height:1.6;margin-bottom:28px;">〒111-0033<br/>東京都台東区花川戸1-4-1</div>` : `
+        <div style="font-size:30px;font-weight:700;line-height:1.35;margin-bottom:14px;">相鉄フレッサイン<br/>東京田町</div>
+        <div style="font-size:22px;line-height:1.6;margin-bottom:28px;">〒108-0023<br/>東京都港区芝浦3-14-21</div>`;
+  return `
+    <div style="position:fixed;inset:0;z-index:100;background:var(--paper);overflow-y:auto;">
+      <div style="max-width:480px;margin:0 auto;padding:28px 24px 40px;">
+        <div style="font-size:15px;color:var(--moss);margin-bottom:18px;">この住所までお願いします。</div>
+        ${body}
+        <button data-action="toggle-taxi" style="width:100%;background:var(--ink);color:#fff;border:none;border-radius:10px;padding:14px 0;font-size:15px;font-weight:700;cursor:pointer;">關閉</button>
       </div>
     </div>`;
 }
@@ -550,7 +622,8 @@ function render() {
       <button class="nav-btn${state.tab==="prep"?" active":""}" data-action="set-tab" data-tab="prep">行前準備</button>
       <button class="nav-btn${state.tab==="itinerary"?" active":""}" data-action="set-tab" data-tab="itinerary">每日行程</button>
       <button class="nav-btn${state.tab==="bill"?" active":""}" data-action="set-tab" data-tab="bill">分帳</button>
-    </div>`;
+    </div>
+    ${state.showTaxi ? taxiOverlay() : ""}`;
   attachEvents();
   persist();
 }
@@ -734,6 +807,9 @@ function attachEvents() {
         render();
       });
     }
+    if (action === "toggle-taxi") {
+      el.addEventListener("click", () => { if (el.dataset.dest) state.taxiDest = el.dataset.dest; state.showTaxi = !state.showTaxi; render(); });
+    }
     if (action === "toggle-pack") {
       el.addEventListener("change", () => {
         const item = state.checklist.find(i => i.id === el.dataset.id);
@@ -768,7 +844,7 @@ function attachEvents() {
         try {
           navigator.clipboard.writeText(ta.value).then(() => {
             el.textContent = "✓ 已複製";
-            setTimeout(() => { el.textContent = "📋 複製"; }, 1500);
+            setTimeout(() => { el.textContent = "複製"; }, 1500);
           }).catch(() => { document.execCommand("copy"); });
         } catch (e) {
           document.execCommand("copy");
